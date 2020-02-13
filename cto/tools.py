@@ -11,6 +11,7 @@ def check_or_make_dir(path):
     if not os.path.exists(path):
         if path.find(sep) != -1:
             check_or_make_dir(path[0:path.rfind(sep)])
+        print path
         os.mkdir(path)
 
 # 拼凑时间 total_time单位为秒
@@ -30,15 +31,25 @@ def total_time(total_time):
 
 
 # 下载并保存文件
-def download(filename, urls):
-    try:
-        with open(filename, 'ab') as file:
-            for url in urls:
+def download(filepath, urls):
+    for url in urls:
+        filename = os.path.join(filepath,url.split("/")[-1])
+        if os.path.exists(filename):
+            continue 
+        try:     
+            with open(filename, 'wb') as file:
                 res = requests.get(url)
                 file.write(res.content)
-    except IOError as e:
-        print(e)
-    return
+        except IOError as e:
+            print(e)
+    # try:
+    #     with open(filename, 'ab') as file:
+    #         for url in urls:
+    #             res = requests.get(url)
+    #             file.write(res.content)
+    # except IOError as e:
+    #     print(e)
+    # return
 
 
 def filename_reg_check(filename):

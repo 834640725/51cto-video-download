@@ -2,9 +2,11 @@
 from bs4 import BeautifulSoup
 import json,re,os,time,random,datetime,sys,cto
 from cto import Login,tools
+import decode_helper
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+import execjs
 
 class Wejob(object,):
     action = ('info', 'download')
@@ -22,7 +24,7 @@ class Wejob(object,):
         self.path += '/'+train_name
         cto.check_or_make_dir(self.path)
 
-        print('微职位名称:'+train_name+'\n获取课程列表')
+        print(u'微职位名称:'+train_name+u'\n获取课程列表')
         courses = train['courses']
 
         total_course = len(courses)
@@ -30,9 +32,12 @@ class Wejob(object,):
 
         # 打印course名称
         for course in courses:
+            print course
             print(str(courses.index(course)+1)+'.'+course['course_name'])
 
-        action = raw_input('是否下载y/n? 默认y:')
+        # action = raw_input('是否下载y/n? 默认y:')
+        action = 'y'
+
         if action == 'n':
             print '终止下载,程序退出'
             exit()
@@ -63,28 +68,66 @@ class Wejob(object,):
             total_lesson = len(lessons)
 
             for lesson in lessons:
+                lesson_type = lesson["lesson_type"]
+                lesson_name =lesson['lesson_name']
+                if  lesson_type != "1":
+                    print u"跳过练习 "+lesson_name
+                    continue
                 lesson_id = '_'.join([str(course_id), str(lesson['lesson_id'])])
                 lesson_index = lessons.index(lesson)+1
-                filename = os.path.join(file_path, "%d.%s.ts" % (lesson_index, lesson['lesson_name']))
-                if os.path.exists(filename):
-                    continue
+
+                lesson_path = os.path.join(file_path, "%d.%s" % (lesson_index, lesson['lesson_name']))
+                cto.check_or_make_dir(lesson_path)
+
+                # filename = os.path.join(file_path, "%d.%s.ts" % (lesson_index, lesson['lesson_name']))
+                # if os.path.exists(filename):
+                #     continue
 
                 print datetime.datetime.now().strftime("%H:%M:%S")+' 正在下载(%d/%d)-%s' % (lesson_index,total_lesson,lesson['lesson_name'])
-                urls = self.get_download_url(lesson_id, lesson['video_id'])
-                try:
-                    cto.download(filename, urls)
-                except Exception :
-                    time.sleep(random.uniform(5,10))
-                    cto.download(filename, urls)
+                #qxx 下载、保存m3u8文件
+                m3u8_content = self.get_m3u8_content(lesson_id, lesson['video_id'])
+                m3u8_file = os.path.join(lesson_path,"vedio.m3u8")
+                if not os.path.exists(m3u8_file):
+                    with open(m3u8_file, 'w') as file:
+                        file.write(m3u8_content)
+                #qxx 下载、保存enkey(加密key)文件
+                enkey_content = self.get_enkey(lesson_id, lesson['video_id'])
+                enkey_file = os.path.join(lesson_path,"enkey.key")
+                if not os.path.exists(enkey_file):
+                    with open(enkey_file, 'w') as file:
+                        file.write(enkey_content)
+
+                #qxx 解密、保存key
+                key_content = decode_helper.decode(enkey_content,lesson_id)
+                key_file = os.path.join(lesson_path,"key.key")
+                if not os.path.exists(key_file):                
+                    with open(key_file, 'w') as file:
+                        file.write(key_content)
+                urls = self.get_download_urls(m3u8_content)                
+                # try:
+                #     cto.download(lesson_path, urls)
+                # except Exception :
+                #     time.sleep(random.uniform(5,10))
+                #     cto.download(lesson_path, urls)
 
         print 'train下载用时总计'+cto.total_time(time.time()-train_start)
 
-    def get_download_url(self,lesson_id,video_id):
-        url = 'http://edu.51cto.com//center/player/play/m3u8?lesson_id=%s&id=%d&dp=high&type=wejoboutcourse&' \
+    def get_enkey(self,lesson_id,video_id):
+        sign = decode_helper.get_sign(lesson_id);
+        url = "https://edu.51cto.com/center/player/play/get-key?lesson_id=%s&id=%d&type=wejoboutcourse&lesson_type=course&isPreview=0&sign=%s" %(lesson_id,video_id,sign)
+        res = self.session.get(url).text
+        return res
+
+    def get_m3u8_content(self,lesson_id,video_id):
+        url = 'http://edu.51cto.com/center/player/play/m3u8?lesson_id=%s&id=%d&dp=high&type=wejoboutcourse&' \
               'lesson_type=course'\
               %(lesson_id,video_id)
         res = self.session.get(url).text
-        return re.findall(r'https.*', res)
+        return res
+
+    def get_download_urls(self,m3u8_content):
+        # qxx m3u8文件
+        return re.findall(r'https.*', m3u8_content)
 
     def get_course_info(self, course_id):
         infos = []
@@ -94,7 +137,11 @@ class Wejob(object,):
             res = self.session.get(url).text
             data = json.loads(res)['data']
             current_page = data['current_page'] + 1 if data['current_page'] < data['count_page'] else 0
-            pages = data['data'][0]['list']
+            
+            if  len(data['data']) == 1 : 
+                pages = data['data'][0]['list']
+            else: 
+                pages = data['data']
 
             # 判断list里的数据是list还是dict
             f = lambda m, pages: pages[m] if type(pages) is dict else m
@@ -105,7 +152,8 @@ class Wejob(object,):
                 info = {
                     'lesson_name': lesson_name,
                     'lesson_id': m['lesson_id'],
-                    'video_id': m['video_id']
+                    'video_id': m['video_id'],
+                    "lesson_type": m["lesson_type"]
                 }
                 infos.append(info)
         return infos
@@ -179,7 +227,8 @@ class Wejob(object,):
 
         while True:
             try:
-                input = raw_input("请输入您要下载的微职位id:")
+                # input = raw_input("请输入您要下载的微职位id:")
+                input = "412"
                 input = int(input)
             except ValueError:
                 print "无效的输入:" ,input

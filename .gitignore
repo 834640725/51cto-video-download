@@ -3,3 +3,5 @@
 *.pyc
 venv/
 cache/*
+学习/
+.vscode/
