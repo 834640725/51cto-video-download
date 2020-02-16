@@ -1,10 +1,11 @@
 # encoding=utf-8
 import simplejson as json, execjs, re, os
 from cto import Login,tools
+import decode_helper
 
-
+# qxx 这个类不应该叫lesson, 应该叫course, 因为有course字段, 还有lesson的list
 class Lesson(object):
-    lesson_id = 0
+    # lesson_id = 0
     size = 20
     page = 1
     course_id = 0
@@ -13,7 +14,7 @@ class Lesson(object):
     def __init__(self, session, path="学习"):
         self.session = session
         self.course_id = 0
-        self.lesson_id = 0
+        # self.lesson_id = 0
         self.list = []
         self.data = []  # [['filename':'',urls:[]]]
         self.path = tools.join_path(tools.main_path(), path)
@@ -109,41 +110,80 @@ class Lesson(object):
         self.list = infos
         return self
 
-    def sign(self):
+    def sign(self,lesson_id):
         ctx = execjs.compile(tools.get_sign_js())
-        return ctx.call("sign", self.lesson_id)
+        return ctx.call("sign", lesson_id)
+
+    def get_key(self,lesson_id,m3u8_content):
+        try:
+            # #EXT-X-KEY:METHOD=AES-128,URI="/center/player/play/get-key?lesson_id=55295&id=40948&type=course&lesson_type=course&isPreview=0",IV=0x0123456789abcdef0123456789abcdef
+            source = m3u8_content
+            uri = re.search(r'URI="(.+)",IV',source).group(1)
+            # https://edu.51cto.com/center/player/play/get-key?lesson_id=55295&id=40948&type=course&lesson_type=course&isPreview=0&sign=92471bab968419d885ed23fb739d5e13
+            sign = self.sign(lesson_id)
+            url = "https://edu.51cto.com%s&sign=%s" % (uri,sign)
+            enkey = self.session.get(url).text
+            key = decode_helper.decode(enkey,str(lesson_id))
+            return key
+        except Exception as ex:
+            raise ex,"get_key error"
 
     def get_lesson_m3u8(self, lesson_id):
         url = "https://edu.51cto.com/center/player/play/get-lesson-info?" \
-              "type=course&lesson_type=course&sign=%s&lesson_id=%d" % (self.sign(), lesson_id)
+              "type=course&lesson_type=course&sign=%s&lesson_id=%d" % (self.sign(lesson_id), lesson_id)
 
         resp = self.session.get(url).text
-
+        if(len(resp))< 100: 
+            msg = "get_lesson_m3u8: 返回数据过短: "+resp
+            raise RuntimeError(msg)
         arr = json.loads(resp)
         dispatch = arr['dispatch']
         high = dispatch[0]
         url = high['url']
 
         # 10s video urls
-        return self.get_video_url_by_m3u8_file(url)
+        # get_m3u8_file
+        return self.session.get(url).text
 
-    def download(self):
+# 改动了某些方法, 不能用了; 
+    # def download(self):
+    #     course_path = tools.join_path(self.path, self.course_name)
+    #     print course_path
+    #     tools.check_or_make_dir(course_path)
+
+    #     for lesson in self.list:
+    #         urls = self.get_lesson_m3u8(lesson['lesson_id'])
+    #         file_name = tools.join_path(course_path, "%s.ts" % lesson['title'])
+    #         print file_name
+    #         if os.path.exists(file_name):
+    #             continue
+    #         print "download %s" % file_name
+    #         tools.download(file_name, urls)
+
+    def download_m3u8(self):
         course_path = tools.join_path(self.path, self.course_name)
         print course_path
-        tools.check_or_make_dir(course_path)
-
         for lesson in self.list:
-            urls = self.get_lesson_m3u8(lesson['lesson_id'])
-            file_name = tools.join_path(course_path, "%s.ts" % lesson['title'])
-            print file_name
-            if os.path.exists(file_name):
-                continue
-            print "download %s" % file_name
-            tools.download(file_name, urls)
+            sorted = lesson['sorted']
+            lesson_name = "%s.%s" % (lesson['sorted'],lesson['title']) 
+            lesson_name = tools.filename_reg_check(lesson_name)
+            lesson_path = tools.join_path(course_path,lesson_name)
+            print lesson_path
+            tools.check_or_make_dir(lesson_path)
 
-    def get_video_url_by_m3u8_file(self, url):
-        res = self.session.get(url).text
-        return re.findall(r'https.*', res)
+            m3u8_file = os.path.join(lesson_path,"vedio.m3u8")   
+            if not os.path.exists(m3u8_file):
+                m3u8_content =self.get_lesson_m3u8(lesson['lesson_id'])
+                with open(m3u8_file, 'w') as file:
+                    file.write(m3u8_content)
+            else: 
+                with open(m3u8_file,"r") as f: 
+                    m3u8_content = f.read()
+            key_file = os.path.join(lesson_path,"key.key")                         
+            if not os.path.exists(key_file):           
+                key_content = self.get_key(lesson['lesson_id'],m3u8_content)
+                with open(key_file, 'w') as file:
+                    file.write(key_content)
 
     def set_course_id_by_course_list(self):
         url = "https://edu.51cto.com/center/course/user/ajax-info-new?page=%d&size=5&cate_id=0"
@@ -193,3 +233,7 @@ class Lesson(object):
                             exit()
                         print "无效的课程id:", input
                         break
+    def set_course(self,course_id,course_name):
+        self.course_id = course_id
+        self.course_name = course_name
+        return self

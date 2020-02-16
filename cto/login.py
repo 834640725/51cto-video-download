@@ -49,8 +49,8 @@ class Login(object):
         username = raw_input('登录账号:')
         password = raw_input('密码:')
         auth = {
-            'username': username,
-            'password': password
+            'username': username.strip(),
+            'password': password.strip()
         }
 
         return self.login_with_auth(session,auth)
@@ -89,7 +89,10 @@ class Login(object):
         if os.path.exists(self.path['cookies']):
             # 从文件中读取cookie
             with open(self.path['cookies'], 'r') as f:
-                cookies = requests.utils.cookiejar_from_dict(pickle.load(f))
+                #qxx 移除_identity的cookie, 实测这个cookie会导致课程列表没数据; 
+                d = dict(pickle.load(f))
+                d.pop("_identity",None)
+                cookies = requests.utils.cookiejar_from_dict(d)
             session.cookies = cookies
             headers = self.headers
             headers['Host'] = 'edu.51cto.com'

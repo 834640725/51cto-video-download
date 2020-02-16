@@ -32,6 +32,7 @@ def total_time(total_time):
 
 # 下载并保存文件
 def download(filepath, urls):
+    # qxx 下载ts文件, 不合并; 
     for url in urls:
         filename = os.path.join(filepath,url.split("/")[-1])
         if os.path.exists(filename):
@@ -53,7 +54,9 @@ def download(filepath, urls):
 
 
 def filename_reg_check(filename):
-    return re.sub('[\?\*\/\\\!]', '&', filename)
+    filename = re.sub('[\?\*\/\\\!]', '&', filename)
+    filename = re.sub('[\x08]', '', filename) #qxx 新添加
+    return filename
 
 
 # 获取“当前”文件所在目录

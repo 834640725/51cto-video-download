@@ -15,10 +15,9 @@ if __name__ == '__main__':
             for i in download_type:
                 print "%d:%s" % (i, download_type[i]['name'])
 
-            print
             print "输入0退出"
-            # input = raw_input("请选择:")
-            input = "1"
+            input = raw_input("请选择:")
+            # input = "1"
 
             try:
                 input = int(input)

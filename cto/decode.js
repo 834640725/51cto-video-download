@@ -251,12 +251,13 @@ dec = function (e, t) {
     return a
 }
 
-function decode(enKey, lid) {
-    t = dec(enKey, lid.replace(/_\d*/, ""));
+// 这里的lesson_id就是get-key?lesson_id=1945_324395里的lesson_id
+function decode(enKey, lesson_id) {
+    t = dec(enKey, lesson_id.replace(/_\d*/, ""));
     return t;
 }
-
-function getSign(lid){
+// 和decode的lesson_id相同
+function getSign(lesson_id){
     let oriralSign = "eDu_51Cto_siyuanTlw";
-    return MD5(lid + oriralSign).toString();
+    return MD5(lesson_id + oriralSign).toString();
 }

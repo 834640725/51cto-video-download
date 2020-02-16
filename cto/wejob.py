@@ -35,8 +35,8 @@ class Wejob(object,):
             print course
             print(str(courses.index(course)+1)+'.'+course['course_name'])
 
-        # action = raw_input('是否下载y/n? 默认y:')
-        action = 'y'
+        action = raw_input('是否下载y/n? 默认y:')
+        # action = 'y'
 
         if action == 'n':
             print '终止下载,程序退出'
@@ -74,36 +74,38 @@ class Wejob(object,):
                     print u"跳过练习 "+lesson_name
                     continue
                 lesson_id = '_'.join([str(course_id), str(lesson['lesson_id'])])
-                lesson_index = lessons.index(lesson)+1
 
-                lesson_path = os.path.join(file_path, "%d.%s" % (lesson_index, lesson['lesson_name']))
+                show_number = lesson["show_number"]
+                lesson_path = os.path.join(file_path,lesson["chapter_sort_name"], "%s.%s" % (show_number, lesson['lesson_name']))
                 cto.check_or_make_dir(lesson_path)
 
-                # filename = os.path.join(file_path, "%d.%s.ts" % (lesson_index, lesson['lesson_name']))
+                # filename = os.path.join(file_path, "%d.%s.ts" % (show_number, lesson['lesson_name']))
                 # if os.path.exists(filename):
                 #     continue
 
-                print datetime.datetime.now().strftime("%H:%M:%S")+' 正在下载(%d/%d)-%s' % (lesson_index,total_lesson,lesson['lesson_name'])
+                print datetime.datetime.now().strftime("%H:%M:%S")+' 正在下载(%s/%d)-%s' % (show_number,total_lesson,lesson['lesson_name'])
                 #qxx 下载、保存m3u8文件
-                m3u8_content = self.get_m3u8_content(lesson_id, lesson['video_id'])
-                m3u8_file = os.path.join(lesson_path,"vedio.m3u8")
+                m3u8_file = os.path.join(lesson_path,"vedio.m3u8")                    
                 if not os.path.exists(m3u8_file):
+                    m3u8_content = self.get_m3u8_content(lesson_id, lesson['video_id'])
                     with open(m3u8_file, 'w') as file:
                         file.write(m3u8_content)
+
                 #qxx 下载、保存enkey(加密key)文件
-                enkey_content = self.get_enkey(lesson_id, lesson['video_id'])
-                enkey_file = os.path.join(lesson_path,"enkey.key")
+                enkey_file = os.path.join(lesson_path,"enkey.key")                    
                 if not os.path.exists(enkey_file):
+                    enkey_content = self.get_enkey(lesson_id, lesson['video_id'])
                     with open(enkey_file, 'w') as file:
                         file.write(enkey_content)
 
-                #qxx 解密、保存key
-                key_content = decode_helper.decode(enkey_content,lesson_id)
-                key_file = os.path.join(lesson_path,"key.key")
-                if not os.path.exists(key_file):                
-                    with open(key_file, 'w') as file:
-                        file.write(key_content)
-                urls = self.get_download_urls(m3u8_content)                
+                    #qxx 解密、保存key
+                    key_file = os.path.join(lesson_path,"key.key")                         
+                    if not os.path.exists(key_file):           
+                        key_content = decode_helper.decode(enkey_content,lesson_id)
+                        with open(key_file, 'w') as file:
+                            file.write(key_content)
+
+                # urls = self.get_download_urls(m3u8_content)                
                 # try:
                 #     cto.download(lesson_path, urls)
                 # except Exception :
@@ -126,7 +128,6 @@ class Wejob(object,):
         return res
 
     def get_download_urls(self,m3u8_content):
-        # qxx m3u8文件
         return re.findall(r'https.*', m3u8_content)
 
     def get_course_info(self, course_id):
@@ -138,25 +139,56 @@ class Wejob(object,):
             data = json.loads(res)['data']
             current_page = data['current_page'] + 1 if data['current_page'] < data['count_page'] else 0
             
-            if  len(data['data']) == 1 : 
-                pages = data['data'][0]['list']
-            else: 
-                pages = data['data']
-
-            # 判断list里的数据是list还是dict
-            f = lambda m, pages: pages[m] if type(pages) is dict else m
-            for m in pages:
-                m = f(m, pages)
-                lesson_name = m[u'lesson_name']
-                lesson_name = cto.filename_reg_check(lesson_name)
-                info = {
-                    'lesson_name': lesson_name,
-                    'lesson_id': m['lesson_id'],
-                    'video_id': m['video_id'],
-                    "lesson_type": m["lesson_type"]
-                }
-                infos.append(info)
+            data_list = data['data']  #qxx 可能是lesson的list, 也可能是chapter的list
+            if data_list[0].has_key("lesson_id"): 
+                #data_list是lesson的list
+                for lesson in data_list:
+                    info =  self.parse_lesson(lesson)
+                    infos.append(info)
+            else:
+                #data_list是chapter的list
+                for chapter in data_list:
+                    chapter_name = chapter["chapter_name"]
+                    chapter_name = cto.filename_reg_check(chapter_name)
+                    chapter_sort = chapter["chapter_sort"]
+                    chapter_sort_name = chapter_sort+". "+chapter_name
+                    lessons = chapter["list"] #chapter["list"] 可能是lesson的list; 也可能是dict, key是分页的序号, value是lesson;
+                    lessons = lessons if type(lessons) is list else lessons.values()
+                    for lesson in lessons:
+                        info =  self.parse_lesson(lesson,chapter_sort_name)
+                        infos.append(info)
         return infos
+
+    def parse_lesson(self,lesson,chapter_sort_name=""): 
+        """
+        lesson是服务器返回的lesson的完整信息;
+        这里处理一下可以记录lesson的结构;  
+        """
+        lesson_name = lesson[u'lesson_name']
+        lesson_name = cto.filename_reg_check(lesson_name)
+        info = {
+            'lesson_name': lesson_name,
+            'lesson_id': lesson['lesson_id'],
+            'video_id': lesson['video_id'],
+            "lesson_type": lesson["lesson_type"],
+            "chapter_sort_name": chapter_sort_name,
+            "show_number":lesson["show_number"]
+        }          
+        return info
+        # 判断list里的数据是list还是dict
+        # f = lambda m, pages: pages[m] if type(pages) is dict else m
+        # for m in pages:
+        #     m = f(m, pages)
+        #     lesson_name = m[u'lesson_name']
+        #     lesson_name = cto.filename_reg_check(lesson_name)
+        #     info = {
+        #         'lesson_name': lesson_name,
+        #         'lesson_id': m['lesson_id'],
+        #         'video_id': m['video_id'],
+        #         "lesson_type": m["lesson_type"]
+        #     }
+            #     infos.append(info)
+
 
     def get_train_info(self):
         train = {'name': self.get_train_name(), 'courses': []}
