@@ -178,8 +178,11 @@ def check_or_make_dir(path):
         os.mkdir(path)
 
 def move_ts():
-    base_dir = ur"D:\workspace\python\51cto-download\51cto-video-download\学习\全栈网络安全专家".encode("gbk")
-    target_dir = ur"D:\全栈网络安全专家".encode("gbk")
+    """
+    ts文件直接下到了同名的文件夹里, 把ts移动外层;
+    """
+    base_dir = ur"D:\workspace\python\51cto-download\51cto-video-download\学习\全栈网络安全专家".encode("gbk") #原视频所在位置
+    target_dir = ur"D:\全栈网络安全专家".encode("gbk") #ts视频移动的目标位置; 
     for root,dir_list,file_list in os.walk(base_dir):
         for file in file_list:
             if not file.endswith("ts"):
@@ -219,20 +222,12 @@ def login_test():
     s = ""
 # login_test()    
 
-def course_download_test():
-    session = Login().login()
-    # https://edu.51cto.com/course/3223.html
-    # lesson.Lesson(session).set_course(3223,u"互联网大佬教你如何做经理-实战视频课程").lesson_list().download_m3u8()
-    # 
-    # lesson.Lesson(session).set_course(21007,u"清华编程高手尹成带你用java刷爆leetcode挑战腾讯offer").lesson_list().download_m3u8()
-    # lesson.Lesson(session).set_course(8278,u"【微职位】软考：职场实用技能培训").lesson_list().download_m3u8()
-    # lesson.Lesson(session).set_course(18136,u"MyBatis视频教程[IntelliJ IDEA版本]").lesson_list().download_m3u8()
 
 # course_download_test()
 
-
-print os.sep
-print os.pathsep
-print os.linesep
-print os.curdir
-print os.pardir
+def os_test():
+    print os.sep
+    print os.pathsep
+    print os.linesep
+    print os.curdir
+    print os.pardir
