@@ -1,7 +1,8 @@
 
-2020-02-16: 可以使用; 
+2020-02-16: 目前可以解密视频, 下载到本地观看; 
 
-windows测试能用, cmd乱码问题: 
+# 使用方法
+windows下cmd解决乱码问题: 
 ```
 chcp 65001
 set PYTHONIOENCODING=UTF-8
