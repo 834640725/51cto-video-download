@@ -108,6 +108,7 @@ class Lesson(object):
                 break
 
         self.list = infos
+        print u"总课程数目: "+str(len(infos))
         return self
 
     def sign(self,lesson_id):
