@@ -54,7 +54,7 @@ def download(filepath, urls):
 
 
 def filename_reg_check(filename):
-    filename = re.sub('[\?\*\/\\\!]', '&', filename)
+    filename = re.sub('[\?\*\/\\\!:]', '&', filename)
     filename = re.sub('[\x08]', '', filename) #qxx 新添加
     return filename
 
