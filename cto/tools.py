@@ -74,8 +74,10 @@ def join_path(path, *paths):
 
 
 def main_path():
-    main_script_path = sys.argv[0]
-    return os.path.abspath(os.path.join(main_script_path, ".."))
+    # main_script_path = sys.argv[0]
+    # return os.path.abspath(os.path.join(main_script_path, ".."))
+    # todo qxx
+    return  ur"Z:\xuexi"
 
 def get_sign_js():
     return """

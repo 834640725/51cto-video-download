@@ -231,3 +231,12 @@ def os_test():
     print os.linesep
     print os.curdir
     print os.pardir
+
+
+def unicode_test():
+    a = u"1.MySQL\u57fa\u7840\u77e5\u8bc6\u5165\u95e8\u5b66\u4e60"
+    b = '"\\u30103\\u67081\\u53f7\\u524d\\u514d\\u8d39\\u5b66\\u3011MySQL\\u6570\\u636e\\u5e93\\u5165\\u95e8\\u5230\\u9ad8\\u85aa\\u57f9\\u8bad\\u6559\\u7a0b\\uff08\\u4eceMySQL 5.7 \\u5230 8.0\\uff09", "list": [{"chapter": "1.MySQL\\u57fa\\u7840\\u77e5\\u8bc6\\u5165\\u95e8\\u5b66\\u4e60"'
+    print b
+    print b.decode("unicode-escape")
+    open("test.txt","w").write(a+b)
+unicode_test()    
