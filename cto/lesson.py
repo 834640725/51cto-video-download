@@ -2,6 +2,7 @@
 import simplejson as json, execjs, re, os
 from cto import Login,tools
 import decode_helper
+import collections
 
 # qxx 这个类不应该叫lesson, 应该叫course, 因为有course字段, 还有lesson的list
 class Lesson(object):
@@ -10,6 +11,7 @@ class Lesson(object):
     page = 1
     course_id = 0
     course_name = ""
+    list = []
 
     def __init__(self, session, path="学习"):
         self.session = session
@@ -48,7 +50,9 @@ class Lesson(object):
                     if lesson["lesson_type"] == 3:
                         # 资料下载、总结等文本型; 
                         continue                    
-                    
+                    if lesson["lesson_type"] == 2:
+                        # 课程测试
+                        continue                       
                     lesson['chapter'] = chapter
                     infos.append(lesson)
 
@@ -112,10 +116,22 @@ class Lesson(object):
     #             continue
     #         print "download %s" % file_name
     #         tools.download(file_name, urls)
-
+    def get_course_dict(self):
+        d = collections.OrderedDict()
+        d["course_id"] = self.course_id
+        d["course_name"]=self.course_name.decode("utf8")
+        d["list"]=self.list
+        return d
     def download_m3u8(self):
         course_path = tools.join_path(self.path, self.course_name,"m3u8")
+        tools.check_or_make_dir(course_path)
+
         print u"course_path: "+course_path
+        course_json_file = os.path.join(course_path,"course.json")
+        course_json = json.dumps(self.get_course_dict(),indent=4).decode("unicode-escape")
+        with open(course_json_file,"w") as f:
+            f.write(course_json)
+
         for lesson in self.list:
             sorted = lesson['sorted']
             lesson_name = "%s.%s" % (lesson['weight'],lesson['title']) #lesson['weight']可能是数字, 也可能是1-1,1-2这样的序号;
