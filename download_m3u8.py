@@ -1,15 +1,16 @@
 # encoding=utf-8
 
-import urllib2,os,re
+
 import requests
-import unicodedata
-import sys
+import sys,os
+import re
 from Crypto.Cipher import AES
 
 import time
 import threading
 from Queue import Queue
 from threading import Thread
+from cto import tools
 
 
 def download(base_dir):
@@ -39,13 +40,20 @@ def download(base_dir):
     if len(file_list)>0:
         print u"ts文件已存在 "+base_dir
         return
-    
+    lesson_name = os.path.basename(os.path.dirname(base_dir)) #base_dir以/结尾, 所以要去一次dirname
+    ts_filename_downloading =  base_dir+lesson_name+".ts.downloading"   #下载中的完整路径     
+    # 上层目录
+    ts_filename = os.path.dirname(os.path.dirname(base_dir))+os.sep+lesson_name+".ts" #下载完成后的ts完整路径;
+    # 移动视频到课程目录下: 把路径里的"m3u8"文件夹去掉; 
+    if os.sep+"m3u8"+os.sep in ts_filename:
+        ts_filename = ts_filename.replace(os.sep+"m3u8"+os.sep,os.sep)
+    if os.path.exists(ts_filename):
+        print u"ts文件已存在 "+base_dir
+        return
+
     cryptor = AES.new(key, AES.MODE_ECB) #不需要iv
     urls = re.findall(r'https.*', m3u8_content)
-    lesson_name = os.path.basename(os.path.dirname(base_dir)) #base_dir以/结尾, 所以要去一次dirname
-    ts_filename =  base_dir+lesson_name+".ts"
-    ts_filename_downloading =  base_dir+lesson_name+".ts.downloading"
-    print ts_filename,
+    print "\r\n"+ts_filename_downloading,
     if os.path.exists(ts_filename_downloading):
         os.remove(ts_filename_downloading)  
     for url in urls: 
@@ -58,17 +66,29 @@ def download(base_dir):
         with open(ts_filename_downloading,"ab") as f:
             f.write(cryptor.decrypt(byte_arr))
     print "done"   
+ 
+    tools.check_or_make_dir(os.path.dirname(ts_filename)) 
     os.rename(ts_filename_downloading,ts_filename)
+
+def get_dir_list(base_dir):
+    list = []
+    for path,dir_list,file_list in os.walk(base_dir):
+        # 文件名按照数字大小排序
+        dir_list.sort(key=lambda n:n.split(".")[0].zfill(6))
+        for dir in dir_list:
+            list.append(os.path.join(path,dir))
+    return list
 
 def downlaod_all(base_dir,reverse = False):
     '''
     下载base_dir及子目录下的文件;
     '''
-    for path,dir_list,file_list in os.walk(base_dir):
-        if reverse:
-            dir_list.reverse()
-        for dir in dir_list:
-            download(os.path.join(path,dir))
+    dir_list = get_dir_list(base_dir)
+    if reverse:
+        dir_list.reverse()
+    for dir in dir_list:
+        download(dir)
+
 
 def download_main():
     '''
@@ -104,15 +124,13 @@ def download_multi():
             break
 
 def download_all_multi(base_dir,thread_count = 3):
-    for path,dir_list,file_list in os.walk(base_dir):
-        for dir in dir_list:
-            dir_base =os.path.join(path,dir)
-            queue.put(dir_base)    
+    dir_list = get_dir_list(base_dir)
+    for dir in dir_list:
+        queue.put(dir)
     for i in range(thread_count):
         t = Thread(target=download_multi)
         t.daemon = True # 设置线程daemon  主线程退出，daemon线程也会推出，即时正在运行
         t.start()
-
     queue.join()
 
 def download_main_multi():
@@ -124,11 +142,11 @@ def download_main_multi():
     else:
         print "缺少dir参数"
         return
-    download_all_multi(dir.decode("gbk"),2)   
+    download_all_multi(dir.decode("gbk"),3)   
 
 if __name__ == "__main__": 
-    download_main()
-    # download_main_multi()
+    # download_main()
+    download_main_multi()
 
 
 

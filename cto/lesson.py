@@ -28,64 +28,13 @@ class Lesson(object):
         # "lessonList":Array[7],
         #         "currentPage":4,
         #         "pageCount":4,
-
+# 文件结尾有json示例
+        chapter = ""
         while True:
             url = "https://edu.51cto.com/center/course/user/get-lesson-list?page=%d&size=%d&id=%d" % \
                   (page, self.size, self.course_id)
             resp = self.session.get(url)
             result = json.loads(resp.text)
-            chapter = ""
-
-            # resp struct
-            # {
-            #     "status":1,
-            #     "msg":"课时列表",
-            #     "data":{
-            #         "lessonList":Array[25],
-            #         "currentPage":1,
-            #         "pageCount":3,
-            #         "page":[
-            #             1,
-            #             2,
-            #             3
-            #         ],
-            #         "last_lesson":{
-            #             "lesson":false
-            #         }
-            #     }
-            # }
-
-            # lessonList contains chapter/lesson
-            # chapter
-            # {
-            #                 "type":"chapter",
-            #                 "title":"2018年下半年真题解析",
-            #                 "sorted":1,
-            #                 "chapter_id":35758,
-            #                 "weight":"一",
-            #                 "lesson_num":"4",
-            #                 "video_duration":"40分钟",
-            #                 "url":"https://edu.51cto.com/center/course/lesson/index?id=",
-            #                 "study_status":0,
-            #                 "htime":1
-            #             },
-            # lesson
-            #             {
-            #                 "title":"2018年下半年真题解析（一）",
-            #                 "describe":"讲解了2018年下半年案例分析第一道真题。",
-            #                 "chapter_id":35758,
-            #                 "is_look":1,
-            #                 "lesson_type":1,
-            #                 "lesson_id":331267,
-            #                 "sorted":1,
-            #                 "video_duration":"11:21",
-            #                 "type":"lesson",
-            #                 "weight":"1-1",
-            #                 "url":"https://edu.51cto.com/center/course/lesson/index?id=331267",
-            #                 "study_status":0,
-            #                 "htime":1
-            #             }
-
             if result['data'] is not False:
                 data = result['data']
                 page = data['currentPage']
@@ -94,11 +43,14 @@ class Lesson(object):
 
                 for lesson in lesson_list:
                     if lesson['type'] == 'chapter':
-                        chapter = lesson['type']
+                        chapter = "%d.%s" % (lesson['sorted'],lesson["title"])
                         continue
-                    else:
-                        lesson['chapter'] = chapter
-                        infos.append(lesson)
+                    if lesson["lesson_type"] == 3:
+                        # 资料下载、总结等文本型; 
+                        continue                    
+                    
+                    lesson['chapter'] = chapter
+                    infos.append(lesson)
 
                 if page == page_count:
                     break
@@ -106,10 +58,10 @@ class Lesson(object):
 
             else:
                 break
-
         self.list = infos
         print u"总课程数目: "+str(len(infos))
         return self
+
 
     def sign(self,lesson_id):
         ctx = execjs.compile(tools.get_sign_js())
@@ -162,14 +114,14 @@ class Lesson(object):
     #         tools.download(file_name, urls)
 
     def download_m3u8(self):
-        course_path = tools.join_path(self.path, self.course_name)
-        print course_path
+        course_path = tools.join_path(self.path, self.course_name,"m3u8")
+        print u"course_path: "+course_path
         for lesson in self.list:
             sorted = lesson['sorted']
-            lesson_name = "%s.%s" % (lesson['sorted'],lesson['title']) 
+            lesson_name = "%s.%s" % (lesson['weight'],lesson['title']) #lesson['weight']可能是数字, 也可能是1-1,1-2这样的序号;
             lesson_name = tools.filename_reg_check(lesson_name)
-            lesson_path = tools.join_path(course_path,lesson_name)
-            print lesson_path
+            lesson_path = tools.join_path(course_path,lesson["chapter"],lesson_name)
+            print u"lesson_path:"+ lesson_path
             tools.check_or_make_dir(lesson_path)
 
             m3u8_file = os.path.join(lesson_path,"vedio.m3u8")   
@@ -238,3 +190,53 @@ class Lesson(object):
         self.course_id = course_id
         self.course_name = course_name
         return self
+
+# resp struct
+# {
+#     "status":1,
+#     "msg":"课时列表",
+#     "data":{
+#         "lessonList":Array[25],
+#         "currentPage":1,
+#         "pageCount":3,
+#         "page":[
+#             1,
+#             2,
+#             3
+#         ],
+#         "last_lesson":{
+#             "lesson":false
+#         }
+#     }
+# }
+
+# lessonList contains chapter/lesson
+# chapter
+# {
+#                 "type":"chapter",
+#                 "title":"2018年下半年真题解析",
+#                 "sorted":1,
+#                 "chapter_id":35758,
+#                 "weight":"一",
+#                 "lesson_num":"4",
+#                 "video_duration":"40分钟",
+#                 "url":"https://edu.51cto.com/center/course/lesson/index?id=",
+#                 "study_status":0,
+#                 "htime":1
+#             },
+# lesson
+#             {
+#                 "title":"2018年下半年真题解析（一）",
+#                 "describe":"讲解了2018年下半年案例分析第一道真题。",
+#                 "chapter_id":35758,
+#                 "is_look":1,
+#                 "lesson_type":1,
+#                 "lesson_id":331267,
+#                 "sorted":1,
+#                 "video_duration":"11:21",
+#                 "type":"lesson",
+#                 "weight":"1-1",
+#                 "url":"https://edu.51cto.com/center/course/lesson/index?id=331267",
+#                 "study_status":0,
+#                 "htime":1
+#             }        
