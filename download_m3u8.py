@@ -123,7 +123,7 @@ def download_multi():
         if queue.empty():
             break
 
-def download_all_multi(base_dir,thread_count = 3):
+def download_all_multi(base_dir,thread_count = 5):
     dir_list = get_dir_list(base_dir)
     for dir in dir_list:
         queue.put(dir)

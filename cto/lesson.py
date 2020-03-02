@@ -26,11 +26,10 @@ class Lesson(object):
     def lesson_list(self):
         infos = []
         page = self.page
-
         # "lessonList":Array[7],
         #         "currentPage":4,
         #         "pageCount":4,
-# 文件结尾有json示例
+        # 文件结尾有json示例
         chapter = ""
         while True:
             url = "https://edu.51cto.com/center/course/user/get-lesson-list?page=%d&size=%d&id=%d" % \
@@ -83,7 +82,9 @@ class Lesson(object):
             key = decode_helper.decode(enkey,str(lesson_id))
             return key
         except Exception as ex:
-            raise ex,"get_key error"
+            # raise ex,"get_key error: "+ex.message
+            msg = "traceback ", "get_key error: "+ex.message,str(ex)
+            return msg
 
     def get_lesson_m3u8(self, lesson_id):
         url = "https://edu.51cto.com/center/player/play/get-lesson-info?" \
@@ -122,11 +123,12 @@ class Lesson(object):
         d["course_name"]=self.course_name.decode("utf8")
         d["list"]=self.list
         return d
+
     def download_m3u8(self):
         course_path = tools.join_path(self.path, self.course_name,"m3u8")
         tools.check_or_make_dir(course_path)
-
         print u"course_path: "+course_path
+        # 下载 course.json
         course_json_file = os.path.join(course_path,"course.json")
         course_json = json.dumps(self.get_course_dict(),indent=4).decode("unicode-escape")
         with open(course_json_file,"w") as f:

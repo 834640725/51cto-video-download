@@ -239,4 +239,12 @@ def unicode_test():
     print b
     print b.decode("unicode-escape")
     open("test.txt","w").write(a+b)
-unicode_test()    
+# unicode_test()    
+
+def write_file_test():
+    name = "1111111111.txt"
+    open(name,"w")
+    # with open(,"w") as f :
+    #     raise "yichang........"
+    #     f.write("0000000000000000000")
+write_file_test()

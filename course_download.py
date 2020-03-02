@@ -4,6 +4,7 @@ from cto import Login
 from cto import lesson,tools
 import sys,re,os
 import  download_m3u8
+import simplejson as  json
 
 def course_download(course_id, course_name):
     '''
@@ -45,6 +46,21 @@ def download_main():
     base_dir = os.path.join(tools.main_path(),u"学习",name)
     download_m3u8.download_all_multi(base_dir)
 
+def debug():
+    course_id = 21072
+    course_name = "别购买_共717课时-51CTO学院"
+    session = Login().login()
+    course = lesson.Lesson(session).set_course(course_id,course_name)
+    # -------------------
+
+    course_json_file = ur"Z:\xuexi\学习\别购买_共717课时-51CTO学院\m3u8\course.json"
+    with open(course_json_file,"r") as f:
+        course_json = f.read()
+    data = json.loads(course_json)
+    data_list = data["list"]  
+    course.list = data_list[687:]
+    course.download_m3u8()
+
 if __name__ == "__main__": 
     # https://edu.51cto.com/course/3223.html
     # course_download(3223,u"互联网大佬教你如何做经理-实战视频课程")
@@ -58,6 +74,7 @@ if __name__ == "__main__":
     # course_download(18034,u"【3月1号前免费学】Oracle数据库培训教程（从Oracle 11g 到 Oracle 19c）")
     # course_download(17895,u"【3月1号前免费学】MySQL数据库入门到高薪培训教程（从MySQL 5.7 到 8.0）") 
 
+    # debug()
     download_main()
 
 
